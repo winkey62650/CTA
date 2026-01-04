@@ -8,12 +8,10 @@ if os.path.exists(data_path) == False:
     os.makedirs(data_path)
 
 # k线数据路径
-data_center_path = 'D:/gitlab的项目/bn_data/output/market/swap_1m'
-time_interval = '1m'    # k线数据周期
 
 # 回测配置
 # symbol_list = ['RARE-USDT','SUI-USDT','BNX-USDT','MEME-USDT','TURBO-USDT','DOGE-USDT','PEOPLE-USDT','1000SHIB-USDT','1000RATS-USDT','1000SATS-USDT','1000BONK-USDT','MEW-USDT','WIF-USDT','1000PEPE-USDT'] # 指定币种池
-symbol_list = ['1000PEPE-USDT']
+symbol_list = ['BTC-USDT']
 para = [180]  # 策略参数
 proportion = 0.5  # 止盈止损比例
 # signal_name_list = ['rsinmapctv1','rsinmapctv2','rsinmapctv3','rsinma_2parapct']
@@ -26,7 +24,6 @@ c_rate = 8 / 10000  # 手续费，commission fees，默认为万分之5。不同
 slippage = 1 / 1000  # 滑点 ，可以用百分比，也可以用固定值。建议币圈用百分比，股票用固定值
 leverage_rate = 1  # 杠杆倍数
 min_margin_ratio = 1 / 100  # 最低保证金率，低于就会爆仓
-drop_days = 10  # 币种刚刚上线10天内不交易
 
 # 是否分区间遍历
 per_eva = 'a'       # y表示按年分区间遍历，m表示按月分区间遍历，w表示按周分区间遍历, a表示全部遍历
@@ -41,4 +38,3 @@ min_amount_dict = {}
 for i in min_amount_df.index:
     min_amount_dict[min_amount_df.at[i, '合约']] = min_amount_df.at[i, '最小下单量']
 
-head_column = ['candle_begin_time', 'open', 'high', 'low', 'close', 'volume', 'quote_volume', 'trade_num', 'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'offset', 'kline_pct']
