@@ -25,3 +25,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ipynb_checkpoints/
+.venv/
+__pycache__/
+.DS_Store
+data/pickle_data/
+data/market_csv/
+data/output/
+data/oi_history/
