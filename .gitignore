@@ -28,7 +28,5 @@ __pycache__/
 .venv/
 __pycache__/
 .DS_Store
-data/pickle_data/
-data/market_csv/
-data/output/
-data/oi_history/
+data/
+data_oi_fixed/

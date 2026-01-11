@@ -1,4 +1,5 @@
 import os
+import argparse
 import requests
 from datetime import datetime
 from cta_api.binance_fetcher import collect, save_csv
@@ -29,5 +30,10 @@ def run(interval="1h", start="2019-09-01", end=None, limit=None):
             print(sym, "error", str(e))
 
 if __name__ == "__main__":
-    run("1h", "2019-09-01", None, limit=5)
-
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--interval", default="1h")
+    ap.add_argument("--start", default="2019-09-01")
+    ap.add_argument("--end", default=None)
+    ap.add_argument("--limit", type=int, default=5, help="仅抓取前N个合约用于抽样")
+    args = ap.parse_args()
+    run(args.interval, args.start, args.end, args.limit)
