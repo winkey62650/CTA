@@ -118,3 +118,53 @@ def fetch_funding(symbol: str, start: str, end: str) -> pd.DataFrame:
     else:
         df["funding_rate"] = pd.to_numeric(df[frcol], errors="coerce")
     return df[["funding_time","funding_rate"]]
+
+def fetch_klines(symbol: str, interval: str, start: str, end: str) -> pd.DataFrame:
+    sym = symbol.replace("-", "")
+    daily_prefix = f"data/futures/um/daily/klines/{sym}/{interval}/"
+    pattern_daily = rf"{sym}-{interval}-\d{{4}}-\d{{2}}-\d{{2}}\.zip"
+    files = _list_files(daily_prefix, pattern_daily)
+    if not files:
+        return pd.DataFrame()
+    rows = []
+    for f in files:
+        csv = f.split("/")[-1].replace(".zip", ".csv")
+        df = _fetch_zip_csv(f, csv)
+        if not df.empty:
+            rows.append(df)
+    if not rows:
+        return pd.DataFrame()
+    df = pd.concat(rows, ignore_index=True)
+    if "open_time" in df.columns:
+        ot = df["open_time"]
+    elif "Open time" in df.columns:
+        ot = df["Open time"]
+    else:
+        return pd.DataFrame()
+    df["candle_begin_time"] = pd.to_datetime(ot, unit="ms", errors="coerce")
+    cols_map = {
+        "open": "open",
+        "high": "high",
+        "low": "low",
+        "close": "close",
+        "volume": "volume",
+        "quote_asset_volume": "quote_volume",
+        "Number of trades": "trade_num",
+        "number_of_trades": "trade_num",
+        "taker_buy_base_asset_volume": "taker_buy_base_asset_volume",
+        "taker_buy_quote_asset_volume": "taker_buy_quote_asset_volume",
+    }
+    out = pd.DataFrame()
+    out["candle_begin_time"] = df["candle_begin_time"]
+    for src, dst in cols_map.items():
+        if src in df.columns:
+            out[dst] = pd.to_numeric(df[src], errors="coerce")
+        else:
+            out[dst] = np.nan
+    if "quote_volume" not in out.columns and "quote_asset_volume" in df.columns:
+        out["quote_volume"] = pd.to_numeric(df["quote_asset_volume"], errors="coerce")
+    out["taker_sell_quote_asset_volume"] = out["quote_volume"] - out.get("taker_buy_quote_asset_volume", 0)
+    return out[[
+        "candle_begin_time","open","high","low","close","volume","quote_volume","trade_num",
+        "taker_buy_base_asset_volume","taker_buy_quote_asset_volume","taker_sell_quote_asset_volume"
+    ]]

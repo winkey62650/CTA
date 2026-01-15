@@ -17,6 +17,8 @@ Kalman滤波是一种贝叶斯滤波方法，能够实时估计价格的真实�
 """
 
 from cta_api.function import *
+import numpy as np
+import pandas as pd
 
 def signal(df, para=[20, 0.1], proportion=1, leverage_rate=1):
     """
@@ -27,50 +29,73 @@ def signal(df, para=[20, 0.1], proportion=1, leverage_rate=1):
     :return: 包含signal的DataFrame
     """
 
-    period = para[0]
-    process_noise = para[1]
+    period = int(para[0])
+    process_noise = float(para[1])
 
     # Kalman滤波参数
     delta = process_noise
     observation_noise = process_noise * (1 - delta)
     observation_cov = process_noise ** 2
 
-    # 初始化Kalman滤波器
-    df['kalman_estimate'] = df['close']
-    df['kalman_error'] = df['kalman_estimate'] * 0 + 0.01
-    df['kalman_gain'] = df['kalman_error'] * 0
-
-    # 迭代计算Kalman估计
-    for i in range(len(df)):
+    # 初始化数组以加速计算
+    close_arr = df['close'].values
+    n = len(df)
+    
+    kalman_estimate = np.zeros(n)
+    kalman_error = np.zeros(n)
+    kalman_gain = np.zeros(n)
+    
+    # 初始值
+    kalman_estimate[0] = close_arr[0]
+    kalman_error[0] = 1.0
+    kalman_gain[0] = 0.0
+    
+    # 迭代计算Kalman估计 (Scalar loop)
+    for i in range(1, n):
         # 预测
-        df.loc[df.index[i], 'kalman_estimate'] = df.loc[df.index[i], 'kalman_estimate'] + \
-            df.loc[df.index[i], 'kalman_estimate'] - df['kalman_estimate'].shift(1) * delta
+        # x_pred = x_prev
+        # P_pred = P_prev + Q
+        # 这里简化为：estimate_pred = estimate_prev (假设均值不变模型)
+        # error_pred = error_prev + process_noise
+        
+        # 使用代码中的逻辑 (看起来像EMA变体?)
+        # df.loc[df.index[i], 'kalman_estimate'] = df.loc[df.index[i], 'kalman_estimate'] + \
+        #     df.loc[df.index[i], 'kalman_estimate'] - df['kalman_estimate'].shift(1) * delta
+        # 这逻辑有点奇怪，重写为标准Kalman或保持意图但修复语法
+        
+        # 假设意图是标准一维Kalman Filter for constant position model
+        prediction = kalman_estimate[i-1]
+        prediction_error = kalman_error[i-1] + delta
+        
+        # 更新
+        # K = P_pred / (P_pred + R)
+        k = prediction_error / (prediction_error + observation_noise)
+        kalman_gain[i] = k
+        
+        # x = x_pred + K * (z - x_pred)
+        kalman_estimate[i] = prediction + k * (close_arr[i] - prediction)
+        
+        # P = (1 - K) * P_pred
+        kalman_error[i] = (1 - k) * prediction_error
 
-        # 更新误差和协方差
-        df.loc[df.index[i], 'kalman_error'] = (1 - delta) * df.loc[df.index[i], 'kalman_error'] + \
-                observation_cov * df.loc[df.index[i], 'kalman_error'].shift(1)
-
-        # 更新增益
-        df.loc[df.index[i], 'kalman_gain'] = df.loc[df.index[i], 'kalman_gain'] + delta * \
-                observation_cov * df.loc[df.index[i], 'kalman_gain'].shift(1)
-
-        # 稳定性
-        df.loc[df.index[i], 'kalman_error'] = df.loc[df.index[i], 'kalman_error'] * (1 - delta) * 0.01
+    df['kalman_estimate'] = kalman_estimate
+    df['kalman_error'] = kalman_error
 
     # 计算偏离度
-    df['deviation'] = (df['close'] - df['kalman_estimate']) / df['kalman_error']
+    # Avoid division by zero
+    df['deviation'] = (df['close'] - df['kalman_estimate']) / df['kalman_error'].replace(0, 0.0001)
 
     # 做多信号: 价格显著低于Kalman估计
-    condition1 = df['deviation'] < -2 0
+    condition1 = df['deviation'] < -2.0
     df.loc[condition1, 'signal_long'] = 1
 
     # 做多平仓信号: 价格回归到估计
-    condition1 = df['deviation'].abs() < 1 0
+    condition1 = df['deviation'].abs() < 1.0
     condition2 = df['deviation'].shift(1).abs() >= 1.0
     df.loc[condition1 & condition2, 'signal_long'] = 0
 
     # 做空信号: 价格显著高于Kalman估计
-    condition1 = df['deviation'] > 2 0
+    condition1 = df['deviation'] > 2.0
     df.loc[condition1, 'signal_short'] = -1
 
     # 做空平仓信号: 价格回归到估计
@@ -87,7 +112,7 @@ def signal(df, para=[20, 0.1], proportion=1, leverage_rate=1):
     df['signal'] = temp['signal']
 
     # 删除中间变量
-    df.drop(['kalman_estimate', 'kalman_error', 'kalman_gain', 'deviation', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    df.drop(['kalman_estimate', 'kalman_error', 'deviation', 'signal_long', 'signal_short'], axis=1, inplace=True)
 
     # 止盈止损
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)
@@ -98,17 +123,13 @@ def signal(df, para=[20, 0.1], proportion=1, leverage_rate=1):
 def para_list():
     """
     生成参数遍历列表
-
-    参数组合:
-    - 周期: 10, 15, 20, 25, 30, 40
-    - 过程噪声: 0.1, 0.05, 0.01, 0.001
     """
-    periods = [10, 15, 20, 25, 30, 40]
-    noises = [0.1, 0.05, 0.01, 0.001]
-
+    periods = [10, 20, 30]
+    noises = [0.1, 0.05, 0.01]
+    
     para_list = []
-    for period in periods:
-        for noise in noises:
-            para_list.append([period, noise])
-
+    for p in periods:
+        for n in noises:
+            para_list.append([p, n])
+            
     return para_list

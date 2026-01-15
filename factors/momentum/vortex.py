@@ -21,31 +21,46 @@ from cta_api.function import *
 def signal(df, para=[14], proportion=1, leverage_rate=1):
     period = para[0]
 
-    df['high_low'] = df['high'] - df['low']
-    df['low_close'] =df['close'].shift(1)
-    prev_close = df['close'].shift(2)
+    df['prev_close'] = df['close'].shift(1)
+    df['prev_low'] = df['low'].shift(1)
+    df['prev_high'] = df['high'].shift(1)
 
-    df['up_move'] = df['high'].shift(1) > df['prev_close']
-    df['down_move'] = df['low'].shift(1) < df['prev_close']
+    # Vortex Movement
+    df['vm_plus'] = (df['high'] - df['prev_low']).abs()
+    df['vm_minus'] = (df['low'] - df['prev_high']).abs()
+    
+    # True Range
+    df['tr1'] = df['high'] - df['low']
+    df['tr2'] = (df['high'] - df['prev_close']).abs()
+    df['tr3'] = (df['low'] - df['prev_close']).abs()
+    df['tr'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
 
-    df['vr'] = df['up_move'].rolling(window=period, min_periods=1).sum() / df['down_move'].rolling(window=period, min_periods=1).abs().sum()
-    df['vr'] = df['vr'].rolling(window=period, min_periods=1).sum()
+    # Sum over period
+    df['vm_plus_sum'] = df['vm_plus'].rolling(window=period).sum()
+    df['vm_minus_sum'] = df['vm_minus'].rolling(window=period).sum()
+    df['tr_sum'] = df['tr'].rolling(window=period).sum()
 
-    df['vr_signal'] = np.where(df['vr'] > 1, 1, np.where(df['vr'] < 1, -1, 0))
+    # VI
+    df['vi_plus'] = df['vm_plus_sum'] / df['tr_sum']
+    df['vi_minus'] = df['vm_minus_sum'] / df['tr_sum']
 
-    buy_signal = (df['vr_signal'] == 1) & (df['vr_signal'].shift(1) != 1)
-    df.loc[buy_signal, 'signal_long'] = 1
-    df.loc[df['vr_signal'] == -1, 'signal_long'] = 0
+    # Signal: VI+ > VI- => Long, VI+ < VI- => Short
+    # Or cross
+    
+    condition_long = df['vi_plus'] > df['vi_minus']
+    condition_short = df['vi_plus'] < df['vi_minus']
 
-    sell_signal = (df['vr_signal'] == -1) & (df['vr_signal'].shift(1) != -1)
-    df.loc[sell_signal, 'signal_short'] = -1
-    df.loc[df['vr_signal'] == 1, 'signal_short'] = 0
+    df.loc[condition_long, 'signal_long'] = 1
+    df.loc[~condition_long, 'signal_long'] = 0
+    
+    df.loc[condition_short, 'signal_short'] = -1
+    df.loc[~condition_short, 'signal_short'] = 0
 
-    df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)
-
+    df['signal'] = df['signal_long'] + df['signal_short']
     df['signal'] = df['signal'].replace(0, np.nan)
 
-    df.drop(['high_low', 'low_close', 'prev_close', 'up_move', 'down_move', 'vr'], axis=1, inplace=True)
+    df.drop(['prev_close', 'prev_low', 'prev_high', 'vm_plus', 'vm_minus', 'tr1', 'tr2', 'tr3', 'tr', 'vm_plus_sum', 'vm_minus_sum', 'tr_sum', 'vi_plus', 'vi_minus'], axis=1, inplace=True)
+
     
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)
     return df

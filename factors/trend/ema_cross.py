@@ -30,27 +30,27 @@ def signal(df, para=[12, 26], proportion=1, leverage_rate=1):
     long_period = para[1]
 
     # 计算EMA (pandas ewm, adjust=False使用标准EMA公式)
-    df['ema_short'] = df['close'].ewm(span=short_period, adjust=False).mean()
-    df['ema_long'] = df['close'].ewm(span=long_period, adjust=False).mean()
+    df['factor_ema_short'] = df['close'].ewm(span=short_period, adjust=False).mean()
+    df['factor_ema_long'] = df['close'].ewm(span=long_period, adjust=False).mean()
 
     # 做多信号: 短期EMA上穿长期EMA
-    condition1 = df['ema_short'] > df['ema_long']
-    condition2 = df['ema_short'].shift(1) <= df['ema_long'].shift(1)
+    condition1 = df['factor_ema_short'] > df['factor_ema_long']
+    condition2 = df['factor_ema_short'].shift(1) <= df['factor_ema_long'].shift(1)
     df.loc[condition1 & condition2, 'signal_long'] = 1
 
     # 做多平仓信号
-    condition1 = df['ema_short'] < df['ema_long']
-    condition2 = df['ema_short'].shift(1) >= df['ema_long'].shift(1)
+    condition1 = df['factor_ema_short'] < df['factor_ema_long']
+    condition2 = df['factor_ema_short'].shift(1) >= df['factor_ema_long'].shift(1)
     df.loc[condition1 & condition2, 'signal_long'] = 0
 
     # 做空信号: 短期EMA下穿长期EMA
-    condition1 = df['ema_short'] < df['ema_long']
-    condition2 = df['ema_short'].shift(1) >= df['ema_long'].shift(1)
+    condition1 = df['factor_ema_short'] < df['factor_ema_long']
+    condition2 = df['factor_ema_short'].shift(1) >= df['factor_ema_long'].shift(1)
     df.loc[condition1 & condition2, 'signal_short'] = -1
 
     # 做空平仓信号
-    condition1 = df['ema_short'] > df['ema_long']
-    condition2 = df['ema_short'].shift(1) <= df['ema_long'].shift(1)
+    condition1 = df['factor_ema_short'] > df['factor_ema_long']
+    condition2 = df['factor_ema_short'].shift(1) <= df['factor_ema_long'].shift(1)
     df.loc[condition1 & condition2, 'signal_short'] = 0
 
     # 合并多空信号
@@ -62,7 +62,8 @@ def signal(df, para=[12, 26], proportion=1, leverage_rate=1):
     df['signal'] = temp['signal']
 
     # 删除中间变量
-    df.drop(['ema_short', 'ema_long', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    # df.drop(['ema_short', 'ema_long', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    df.drop(['signal_long', 'signal_short'], axis=1, inplace=True)
 
     # 止盈止损
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)

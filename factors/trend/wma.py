@@ -24,12 +24,10 @@ def signal(df, para=[20, 1], proportion=1, leverage_rate=1):
 
     buy_signal = (df['close'] > df['sma']) & (df['close'].shift(1) <= df['sma'].shift(1))
     df.loc[buy_signal, 'signal_long'] = 1
-    df.loc[(df['close'] <= df['sma'].shift(1)) | (df['sma'].shift(1) < df['sma'].shift(1)).all())
     
     df.loc[df['close'] <= df['sma'].shift(1), 'signal_long'] = 0
 
     sell_signal = (df['close'] < df['sma']) & (df['close'].shift(1) >= df['sma'].shift(1))
-    df.loc[(df['close'] >= df['sma'].shift(1)) | (df['sma'].shift(1) > df['sma']).all()]
     df.loc[df['close'] >= df['sma'].shift(1), 'signal_short'] = -1
 
     df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)

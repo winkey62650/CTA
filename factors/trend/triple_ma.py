@@ -41,8 +41,8 @@ def signal(df, para=[10, 20, 50], proportion=1, leverage_rate=1):
     bear_alignment = (df['ma_short'] < df['ma_mid']) & (df['ma_mid'] < df['ma_long'])
 
     # 排列变化判断
-    prev_bull = bull_alignment.shift(1)
-    prev_bear = bear_alignment.shift(1)
+    prev_bull = bull_alignment.shift(1).fillna(False).astype(bool)
+    prev_bear = bear_alignment.shift(1).fillna(False).astype(bool)
 
     # 做多信号: 从非多头变为多头排列
     df.loc[bull_alignment & ~prev_bull, 'signal_long'] = 1

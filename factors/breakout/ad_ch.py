@@ -70,12 +70,17 @@ def signal(df, para=[20], proportion=1, leverage_rate=1):
     df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)
 
     # 去除重复信号
-    temp = df[df['signal'].notnull()][['signal']]
-    temp = temp[temp['signal'] != temp['signal'].shift(1)]
-    df['signal'] = temp['signal']
+    if df['signal'].notnull().any():
+        temp = df[df['signal'].notnull()][['signal']]
+        temp = temp[temp['signal'] != temp['signal'].shift(1)]
+        # 只更新有信号的部分
+        signal_idx = temp.index
+        df.loc[signal_idx, 'signal'] = temp['signal']
 
     # 删除中间变量
-    df.drop(['high_low', 'close_open', 'clv', 'ad', 'ad_ma', 'price_high', 'price_low', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    cols_to_drop = ['clv', 'ad', 'ad_ma', 'price_high', 'price_low', 'signal_long', 'signal_short']
+    cols_to_drop = [col for col in cols_to_drop if col in df.columns]
+    df.drop(cols_to_drop, axis=1, inplace=True)
 
     # 止盈止损
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)

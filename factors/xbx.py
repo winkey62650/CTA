@@ -77,8 +77,8 @@ def signal(df, para=[200, 2, 0.05], proportion=1, leverage_rate=1):
     df['signal'] = temp['signal']  # 将处理后的signal覆盖到原始数据的signal列
 
     # ===== 删除无关变量
-    df.drop(['raw_signal', 'median', 'std', 'upper', 'lower', 'bias', 'temp', 'signal_long', 'signal_short'], axis=1,
-            inplace=True)  # 删除raw_signal、median、std、upper、lower、bias、temp、signal_long、signal_short列
+    df.drop(['median', 'std', 'upper', 'lower', 'bias', 'temp', 'signal_long', 'signal_short'], axis=1,
+            inplace=True)  # 删除median、std、upper、lower、bias、temp、signal_long、signal_short列
 
     # ===== 止盈止损
     # 校验当前的交易是否需要进行止盈止损

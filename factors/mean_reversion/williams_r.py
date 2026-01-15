@@ -66,7 +66,7 @@ def signal(df, para=[14, -20, -80], proportion=1, leverage_rate=1):
     df['signal'] = temp['signal']
 
     # 删除中间变量
-    df.drop(['high_n', 'low_n', 'williams_r', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    df.drop(['williams_r', 'signal_long', 'signal_short'], axis=1, inplace=True)
 
     # 止盈止损
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)
@@ -89,8 +89,8 @@ def para_list():
 
     para_list = []
     for period in periods:
-        for over in overboughts:
-            for over in oversolds:
-                para_list.append([period, over, over])
+        for ob in overboughts:
+            for os in oversolds:
+                para_list.append([period, ob, os])
 
     return para_list

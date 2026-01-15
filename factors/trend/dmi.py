@@ -20,14 +20,14 @@ from cta_api.function import *
 def signal(df, para=[14, 25], proportion=1, leverage_rate=1):
     period = para[0]
     buy_threshold = para[1]
-    sell_threshold = para[2]
+    sell_threshold = -buy_threshold
 
-    high_low = df['high'] - df['low']
-    high_close = np.abs(df['close'] - df['close'].shift(1))
-    close_low = np.abs(df['close'] - df['low'].shift(1))
+    # Standard DMI Logic
+    up = df['high'] - df['high'].shift(1)
+    down = df['low'].shift(1) - df['low']
 
-    df['dm_plus'] = high_low.where(high_close > 0, high_close, 0)
-    df['dm_minus'] = close_low.where(close_low > 0, close_low, 0)
+    df['dm_plus'] = np.where((up > down) & (up > 0), up, 0)
+    df['dm_minus'] = np.where((down > up) & (down > 0), down, 0)
 
     df['sum_plus'] = df['dm_plus'].rolling(window=period, min_periods=1).sum()
     df['sum_minus'] = df['dm_minus'].rolling(window=period, min_periods=1).sum()
@@ -35,9 +35,7 @@ def signal(df, para=[14, 25], proportion=1, leverage_rate=1):
     df['mi'] = 100 * (df['sum_plus'] - df['sum_minus']) / (df['sum_plus'] + df['sum_minus'])
     df['mi_signal'] = np.where(df['mi'] > buy_threshold, 1, np.where(df['mi'] < sell_threshold, -1, 0))
 
-    df['signal'] = df['mi_signal'].ffillna(method='ffill')
-
-    df['signal'] = df['signal'].replace(0, np.nan)
+    df['signal'] = df['mi_signal'].replace(0, np.nan).fillna(method='ffill')
     
     df.drop(['dm_plus', 'dm_minus', 'sum_plus', 'sum_minus', 'mi', 'mi_signal'], axis=1, inplace=True)
     

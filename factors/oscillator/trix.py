@@ -16,55 +16,67 @@ TRIX上穿零轴且>0时做多，下穿零轴且<0时做空。
 """
 
 from cta_api.function import *
+import pandas as pd
+import numpy as np
 
 def signal(df, para=[14, 40], proportion=1, leverage_rate=1):
-    short_period = para[0]
-    long_period = para[1]
+    period = int(para[0])
+    signal_period = int(para[1]) # Matrix length or signal line length? usually TRIX and Matrix
 
-    high_low = df['high'] - df['low']
-    high_close = np.abs(df['close'] - df['close'].shift(1))
-    low_close = np.abs(df['low'] - df['low'].shift(1))
+    # TRIX Calculation
+    # 1. EMA1 of Close
+    ema1 = df['close'].ewm(span=period, adjust=False).mean()
+    # 2. EMA2 of EMA1
+    ema2 = ema1.ewm(span=period, adjust=False).mean()
+    # 3. EMA3 of EMA2
+    ema3 = ema2.ewm(span=period, adjust=False).mean()
+    
+    # 4. TRIX = (EMA3 - EMA3_prev) / EMA3_prev * 100
+    df['trix'] = (ema3 - ema3.shift(1)) / ema3.shift(1) * 100
+    
+    # 5. MATRIX (Signal Line) = MA(TRIX)
+    df['matrix'] = df['trix'].rolling(window=signal_period, min_periods=1).mean()
 
-    df['dm_plus'] = high_low.where(high_close > 0, high_close, 0)
-    df['dm_minus'] = close_low.where(close_low > 0, close_low, 0)
-
-    df['tr'] = df['dm_plus'].rolling(window=short_period, min_periods=1).mean()
-    df['tr_minus'] = df['dm_minus'].rolling(window=long_period, min_periods=1).mean()
-
-    df['tr'] = df['tr'] - df['tr_minus']
-
-    df['tr'] = df['tr'].rolling(window=long_period, min_periods=1).mean()
-
-    df['tr'] = df['tr'].shift(1)
-    df['tr'] = df['tr'].rolling(window=long_period, min_periods=1).mean()
-
-    df['atr'] = df['tr'].rolling(window=long_period, min_periods=1).mean()
-
-    df['adx'] = (abs(df['tr'] + df['tr'].shift(1)) / df['atr'].rolling(window=long_period, min_periods=1).mean()) * 100
-
-    buy_signal = (df['tr'] > 0) & (df['tr'] > df['adx']) & (df['tr'].shift(1) <= 0)
+    # Signals
+    # Buy: TRIX crosses above MATRIX (Golden Cross) or TRIX crosses above 0?
+    # Docstring says: TRIX上穿零轴且>0? 
+    # Standard TRIX strategy: Golden Cross (TRIX > MATRIX) or Zero Cross.
+    # Let's follow docstring hint "TRIX上穿零轴" -> Crosses 0.
+    
+    # Strategy A: Zero Cross
+    # buy_signal = (df['trix'] > 0) & (df['trix'].shift(1) <= 0)
+    # sell_signal = (df['trix'] < 0) & (df['trix'].shift(1) >= 0)
+    
+    # Strategy B: Signal Line Cross (TRIX vs MATRIX)
+    buy_signal = (df['trix'] > df['matrix']) & (df['trix'].shift(1) <= df['matrix'].shift(1))
+    sell_signal = (df['trix'] < df['matrix']) & (df['trix'].shift(1) >= df['matrix'].shift(1))
+    
     df.loc[buy_signal, 'signal_long'] = 1
-    df.loc[df['tr'] <= 0, 'signal_long'] = 0
-
-    sell_signal = (df['tr'] < 0) & (df['tr'] < df['adx']) & (df['tr'].shift(1) >= 0)
-    df.loc[sell_signal, 'signal_short'] -1
-    df.loc[df['tr'] >= 0, 'signal_short'] = 0
+    df.loc[sell_signal, 'signal_short'] = -1
+    
+    # Close signals (optional, or just reverse)
+    # If using cross strategy, we are always in market or wait for reverse?
+    # Let's assume always in market for simplicity or add exit logic.
+    # Close Long if TRIX < MATRIX
+    df.loc[df['trix'] < df['matrix'], 'signal_long'] = 0
+    df.loc[df['trix'] > df['matrix'], 'signal_short'] = 0
 
     df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)
+    temp = df[df['signal'].notnull()][['signal']]
+    temp = temp[temp['signal'] != temp['signal'].shift(1)]
+    df['signal'] = temp['signal']
 
-    df['signal'] = df['signal'].replace(0, np.nan)
-
-    df.drop(['tr', 'tr', 'atr', 'adx'], axis=1, inplace=True)
+    df.drop(['trix', 'matrix', 'signal_long', 'signal_short'], axis=1, inplace=True)
     
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)
     return df
 
 def para_list():
-    short_periods = [10, 14, 21, 28]
-    long_periods = [40, 50]
+    periods = [10, 14, 21, 28]
+    signal_periods = [9, 12, 20] # Standard signal lengths
     
     para_list = []
-    for short in short_periods:
-        for long in long_periods:
-            para_list.append([short, long])
+    for p in periods:
+        for s in signal_periods:
+            para_list.append([p, s])
     return para_list

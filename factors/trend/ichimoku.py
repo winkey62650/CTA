@@ -26,7 +26,7 @@ def signal(df, para=[9, 26, 52], proportion=1, leverage_rate=1):
     high_close = np.abs(df['high'] - df['close'])
     close_low = np.abs(df['close'] - df['low'])
 
-    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=1)
+    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=0)
 
     df['tenkan'] = (df['high'] + df['low']) / 2
     df['tenkan_lead'] = df['tenkan'].shift(tenkan)
@@ -44,13 +44,13 @@ def signal(df, para=[9, 26, 52], proportion=1, leverage_rate=1):
 
     df['close_above_cloud'] = df['close'] >= df['cloud_top'].shift(1)
 
-    buy_signal = df['close_above_cloud'] & (~df['close_above_cloud'].shift(1))
+    buy_signal = df['close_above_cloud'] & (~df['close_above_cloud'].shift(1).fillna(False).astype(bool))
     df.loc[buy_signal, 'signal_long'] = 1
     df.loc[(~df['close_above_cloud']), 'signal_long'] = 0
 
-    sell_signal = df['close'] < df['cloud_bottom'].shift(1) & (~df['close'] < df['cloud_bottom'].shift(1))
+    sell_signal = (df['close'] < df['cloud_bottom'].shift(1)) & (~(df['close'].shift(1) < df['cloud_bottom'].shift(2)).fillna(False).astype(bool))
     df.loc[sell_signal, 'signal_short'] = -1
-    df.loc[(~df['close'] < df['cloud_bottom']), 'signal_short'] = 0
+    df.loc[~(df['close'] < df['cloud_bottom'].shift(1)), 'signal_short'] = 0
 
     df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)
     temp = df[df['signal'].notnull()][['signal']]

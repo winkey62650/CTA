@@ -1,17 +1,83 @@
 import os
 import pandas as pd
 import numpy as np
+from typing import List, Union
+try:
+    import numba
+    HAS_NUMBA = True
+except ImportError:
+    HAS_NUMBA = False
+    print("Warning: Numba not found. Backtest speed might be slow. Please install numba: pip install numba")
 
-def transfer_to_period_data(df:pd.DataFrame, rule_type='5T'):
+def _process_stop_loss_core(
+    open_arr: np.ndarray,
+    close_arr: np.ndarray,
+    signal_arr: np.ndarray,
+    stop_loss_pct: float,
+    leverage_rate: float
+) -> tuple:
+    """
+    止损逻辑核心函数
+    :return: (更新后的signal数组, stop_loss_condition数组)
+    """
+    length = len(open_arr)
+    new_signal = signal_arr.copy()
+    stop_loss_price_arr = np.full(length, np.nan)
+    
+    position = 0
+    open_price = np.nan
+    
+    for i in range(length):
+        # 1. 检查是否有新信号 (开仓或反手)
+        curr_signal = new_signal[i]
+        
+        # 判断是否需要更新仓位：有信号，且 (还没开仓 或 信号方向改变)
+        if not np.isnan(curr_signal):
+            if np.isnan(open_price) or position != int(curr_signal):
+                position = int(curr_signal)
+                # 开仓价格: 下一根K线开盘价 (如果存在)，否则用当前收盘价
+                if curr_signal != 0: # 开仓
+                    if i < length - 1:
+                        open_price = open_arr[i + 1]
+                    else:
+                        open_price = close_arr[i]
+                else: # 平仓
+                    open_price = np.nan
+        
+        # 2. 止损检查
+        if position != 0:
+            # 计算止损价
+            stop_loss_price = open_price * (1 - position * stop_loss_pct / leverage_rate)
+            stop_loss_price_arr[i] = stop_loss_price
+            
+            # 判断是否触发止损: (做多且收盘<止损) 或 (做空且收盘>止损)
+            # 等价于: position * (close - stop_loss_price) <= 0
+            if position * (close_arr[i] - stop_loss_price) <= 0:
+                # 触发止损
+                # 如果当前没有原始信号，则强制平仓 (写入0)
+                if np.isnan(signal_arr[i]):
+                    new_signal[i] = 0
+                    position = 0
+                    open_price = np.nan
+                    
+    return new_signal, stop_loss_price_arr
+
+# 如果安装了 Numba，则进行 JIT 编译
+if HAS_NUMBA:
+    _process_stop_loss_optimized = numba.jit(nopython=True)(_process_stop_loss_core)
+else:
+    _process_stop_loss_optimized = _process_stop_loss_core
+
+
+
+def transfer_to_period_data(df: pd.DataFrame, rule_type: str = '5T') -> pd.DataFrame:
     """
     将日线数据转换为相应的周期数据
-    :param df:原始数据
-    :param period_type:转换周期
-    :param extra_agg_dict:
-    :param offset:
-
-    :return:
+    :param df: 原始数据
+    :param rule_type: 转换周期 (e.g. '5T', '1H')
+    :return: 转换后的周期数据 DataFrame
     """
+    df = df.copy() # Avoid modifying original
     df.set_index('candle_begin_time', inplace=True)
     df['avg_price_1m'] = df['avg_price']
     agg_dict = {
@@ -28,11 +94,16 @@ def transfer_to_period_data(df:pd.DataFrame, rule_type='5T'):
         'avg_price': 'first'
     }
     # =====转换为其他分钟数据
-    period_df = df.resample(rule=rule_type).agg(agg_dict)
+    # Handle deprecated 'H' -> 'h'
+    resample_rule = rule_type
+    if resample_rule.endswith('H'):
+        resample_rule = resample_rule.replace('H', 'h')
+
+    period_df = df.resample(rule=resample_rule).agg(agg_dict)
     # =针对重采样后数据，补全空缺的数据。保证整张表没有空余数据
-    period_df['symbol'].fillna(method='ffill',  inplace=True)
+    period_df['symbol'].ffill(inplace=True)
     # 对开、高、收、低、价格进行补全处理
-    period_df['close'].fillna(method='ffill',   inplace=True)
+    period_df['close'].ffill(inplace=True)
     period_df['open'].fillna(value=period_df['close'], inplace=True)
     period_df['high'].fillna(value=period_df['close'], inplace=True)
     period_df['low'].fillna(value=period_df['close'],  inplace=True)
@@ -41,42 +112,53 @@ def transfer_to_period_data(df:pd.DataFrame, rule_type='5T'):
     period_df.loc[:, fill_0_list] = period_df[fill_0_list].fillna(value=0)
 
     # 用1m均价代替重采样均价
-    # period_df.set_index('candle_begin_time', inplace=True)
     period_df['avg_price'] = df['avg_price_1m']
     period_df['avg_price'].fillna(value=period_df['open'], inplace=True)
 
     # 计算轮动所需要的每根k线涨跌幅
-    df['pct'] = df['close'].pct_change()
+    df['pct'] = df['close'].pct_change(fill_method=None)
     df['pct'] = df['pct'].fillna(0)
     period_df_list = []
     # 通过持仓周期来计算需要多少个offset，遍历转换每一个offset数据
-    for offset in range(int(rule_type[:-1])):
-        period_df = df.resample(rule_type, offset=offset).agg(agg_dict)
-        period_df['kline_pct'] = df['pct'].resample(rule_type, offset=offset).apply(lambda x: list(x))
-        period_df['offset'] = offset
-        period_df.reset_index(inplace=True)
-        period_df.dropna(subset=['symbol'], inplace=True)
-        period_df_list.append(period_df)
+    try:
+        range_limit = int(rule_type[:-1])
+    except ValueError:
+        range_limit = 1 # Fallback if rule_type is complex like '1D' (handle properly in real scenario)
+
+    for offset in range(range_limit):
+        period_df_resampled = df.resample(resample_rule, offset=offset).agg(agg_dict)
+        period_df_resampled['kline_pct'] = df['pct'].resample(resample_rule, offset=offset).apply(lambda x: list(x))
+        period_df_resampled['offset'] = offset
+        period_df_resampled.reset_index(inplace=True)
+        period_df_resampled.dropna(subset=['symbol'], inplace=True)
+        period_df_list.append(period_df_resampled)
+    
     # 将不同offset的数据，合并到一张表
-    period_df = pd.concat(period_df_list, ignore_index=True)
-    period_df.sort_values(by='candle_begin_time', inplace=True)
-    period_df.dropna(subset=['open'], inplace=True)  # 去除一天都没有交易的周期
-    period_df = period_df[period_df['volume'] > 0]  # 去除成交量为0的交易周期
-    period_df.reset_index(inplace=True,drop=True)
+    if period_df_list:
+        period_df = pd.concat(period_df_list, ignore_index=True)
+        period_df.sort_values(by='candle_begin_time', inplace=True)
+        period_df.dropna(subset=['open'], inplace=True)  # 去除一天都没有交易的周期
+        period_df = period_df[period_df['volume'] > 0]  # 去除成交量为0的交易周期
+        period_df.reset_index(inplace=True,drop=True)
+    
     return period_df
 
 # =====计算资金曲线
-def cal_equity_curve(df, slippage=1 / 1000, c_rate=5 / 10000, leverage_rate=3,
-                     min_amount=0.01,
-                     min_margin_ratio=1 / 100):
+def cal_equity_curve(df: pd.DataFrame, 
+                     slippage: float = 1 / 1000, 
+                     c_rate: float = 5 / 10000, 
+                     leverage_rate: float = 3,
+                     min_amount: float = 0.01,
+                     min_margin_ratio: float = 1 / 100) -> pd.DataFrame:
     """
-    :param df:
-    :param slippage:  滑点 ，可以用百分比，也可以用固定值。建议币圈用百分比，股票用固定值
-    :param c_rate:  手续费，commission fees，默认为万分之5。不同市场手续费的收取方法不同，对结果有影响。比如和股票就不一样。
-    :param leverage_rate:  杠杆倍数
-    :param min_amount:  最小下单量
-    :param min_margin_ratio: 最低保证金率，低于就会爆仓
-    :return:
+    计算资金曲线
+    :param df: 包含K线数据和pos列的DataFrame
+    :param slippage: 滑点
+    :param c_rate: 手续费率
+    :param leverage_rate: 杠杆倍数
+    :param min_amount: 最小下单量
+    :param min_margin_ratio: 最低保证金率
+    :return: 包含资金曲线的DataFrame
     """
     # =====下根k线开盘价
     df['next_open'] = df['open'].shift(-1)  # 下根K线的开盘价
@@ -93,7 +175,7 @@ def cal_equity_curve(df, slippage=1 / 1000, c_rate=5 / 10000, leverage_rate=3,
 
     # =====对每次交易进行分组
     df.loc[open_pos_condition, 'start_time'] = df['candle_begin_time']
-    df['start_time'].fillna(method='ffill', inplace=True)
+    df['start_time'].ffill(inplace=True)
     df.loc[df['pos'] == 0, 'start_time'] = pd.NaT
 
     # =====开始计算资金曲线
@@ -110,7 +192,7 @@ def cal_equity_curve(df, slippage=1 / 1000, c_rate=5 / 10000, leverage_rate=3,
     # ===开仓之后每根K线结束时
     # 买入之后cash，contract_num，open_pos_price不再发生变动
     for _ in ['contract_num', 'open_pos_price', 'cash']:
-        df[_].fillna(method='ffill', inplace=True)
+        df[_].ffill(inplace=True)
     df.loc[df['pos'] == 0, ['contract_num', 'open_pos_price', 'cash']] = None
 
     # ===在平仓时
@@ -145,11 +227,11 @@ def cal_equity_curve(df, slippage=1 / 1000, c_rate=5 / 10000, leverage_rate=3,
     df.loc[close_pos_condition & (df['net_value'] < 0), '是否爆仓'] = 1
 
     # ===对爆仓进行处理
-    df['是否爆仓'] = df.groupby('start_time')['是否爆仓'].fillna(method='ffill')
+    df['是否爆仓'] = df.groupby('start_time')['是否爆仓'].ffill()
     df.loc[df['是否爆仓'] == 1, 'net_value'] = 0
 
     # =====计算资金曲线
-    df['equity_change'] = df['net_value'].pct_change()
+    df['equity_change'] = df['net_value'].pct_change(fill_method=None)
     df.loc[open_pos_condition, 'equity_change'] = df.loc[open_pos_condition, 'net_value'] / initial_cash - 1  # 开仓日的收益率
     df['equity_change'].fillna(value=0, inplace=True)
     df['equity_curve'] = (1 + df['equity_change']).cumprod()
@@ -161,72 +243,38 @@ def cal_equity_curve(df, slippage=1 / 1000, c_rate=5 / 10000, leverage_rate=3,
 
     return df
 
-def process_stop_loss_close(df, stop_loss_pct, leverage_rate):
+
+
+def process_stop_loss_close(df: pd.DataFrame, stop_loss_pct: float, leverage_rate: float) -> pd.DataFrame:
     """
-    止损函数
+    止损函数 (优化版)
     :param df:
     :param stop_loss_pct: 止损比例
     :param leverage_rate: 杠杆倍数
     :return:
     """
-
-    '''
-    止损函数示例
-     candle_begin_time                选币                   open               close           signal        原始信号           止损价格
-    2021-04-23 04:00:00            IOST-USDT...            3.69380            3.69380            -1            -1              4.06318
-    2021-04-23 05:00:00            IOST-USDT...            3.75580            3.75580            nan            nan            4.06318
-    2021-04-23 06:00:00            IOST-USDT...            3.70157            3.70157            nan            nan            4.06318
-    2021-04-23 07:00:00            IOST-USDT...            3.59443            3.59443            nan            nan            4.06318
-    2021-04-23 08:00:00            IOST-USDT...            3.78299            3.78299            nan            nan            4.06318
-    2021-04-23 09:00:00            IOST-USDT...            3.73637            3.73637            -1            -1              4.06318
-    2021-04-23 10:00:00            IOST-USDT...            3.92761            3.92761            nan            nan            4.06318
-    2021-04-23 11:00:00            IOST-USDT...            4.02816            4.02816            nan            nan            4.06318
-    2021-04-23 12:00:00            IOST-USDT...            3.85746            3.85746            nan            nan            4.06318
-    2021-04-23 13:00:00            IOST-USDT...            3.84017            3.84017            nan            nan            4.06318
-    2021-04-23 14:00:00            IOST-USDT...            3.94633            3.94633            nan            nan            4.06318
-    2021-04-23 15:00:00            IOST-USDT...            3.96164            3.96164            nan            nan            4.06318
-    2021-04-23 16:00:00            IOST-USDT...            3.95144            3.95144            nan            nan            4.06318
-    2021-04-23 17:00:00            IOST-USDT...            3.91294            3.91294            nan            nan            4.06318
-    2021-04-23 18:00:00            IOST-USDT...            4.02094            4.02094            nan            nan            4.06318
-    2021-04-23 19:00:00            IOST-USDT...            4.04794            4.04794            nan            nan            4.06318
-    2021-04-23 20:00:00            IOST-USDT...            3.99289            3.99289            nan            nan            4.06318
-    2021-04-23 21:00:00            IOST-USDT...            3.96215            3.96215            nan            nan            4.06318
-    2021-04-23 22:00:00            IOST-USDT...            4.01350            4.01350            nan            nan            4.06318
-    2021-04-23 23:00:00            IOST-USDT...            4.14397            4.14397            0              nan            4.06318
-    '''
-
-    # ===初始化持仓方向与开仓价格
-    position = 0  # 持仓方向
-    open_price = np.nan  # 开仓价格
-
-    for i in df.index:
-        # 开平仓   当signal不为空的时候 并且 open_price为空 或 position与当前方向不同
-        if not np.isnan(df.loc[i, 'signal']) and (np.isnan(open_price) or position != int(df.loc[i, 'signal'])):
-            position = int(df.loc[i, 'signal'])
-            if df.loc[i, 'signal']:  # 开仓
-                # 获取开仓的价格，为了符合实盘，所以获取下一周期的开盘价
-                open_price = df.loc[i + 1, 'open'] if i < df.shape[0] - 1 else df.loc[i, 'close']
-            else:  # 平仓，因为在python中非0即真，所以这里直接写else即代表0
-                open_price = np.nan
-        # 持仓
-        if position:  # 判断当天是否有持仓方向，即是否为非0的值
-            # 计算止损的价格   开仓价格 * (1 - 持仓方向 * 止损比例 / 杠杆倍数)
-            # 假设我们100元开仓，止损0.05，杠杆为2，那么实际上我们开仓的仓位价值是100*2=200元，那么当你的本金亏损%5的时候，实际上的亏损为 (95-100)/200 = -0.025
-            # 假设我们开仓的价格：100 方向：做多    止损比例：5%     杠杆倍数：2 那么止损价格: 100 * (1 - 1 * 0.05 / 2) = 100 * (1 - 0.025) = 100 * 0.975 = 97.5
-            # 即当前的价格小于95就触发止损
-            stop_loss_price = open_price * (1 - position * stop_loss_pct / leverage_rate)
-            # 止损条件等于 持仓方向 * (收盘价 - 止损价格) <= 0
-            stop_loss_condition = position * (df.loc[i, 'close'] - stop_loss_price) <= 0  # 止损条件
-            df.at[i, 'stop_loss_condition'] = stop_loss_price
-            # 如果满足止损条件，并且当前的信号为空时将signal设置为0，避免覆盖其他信号
-            if stop_loss_condition and np.isnan(df.loc[i, 'signal']):
-                df.at[i, 'signal'] = 0
-                position = 0
-                open_price = np.nan
-
+    # 准备 Numba 需要的 Numpy 数组
+    # 注意：Numba 处理 NaN 需要 float 类型
+    open_arr = df['open'].values.astype(np.float64)
+    close_arr = df['close'].values.astype(np.float64)
+    
+    # 确保 signal 列存在且为 float 类型 (包含 NaN)
+    if 'signal' not in df.columns:
+        df['signal'] = np.nan
+    signal_arr = df['signal'].values.astype(np.float64)
+    
+    # 调用 Numba 加速函数 (或纯 Python 函数)
+    new_signal, stop_loss_price_arr = _process_stop_loss_optimized(
+        open_arr, close_arr, signal_arr, stop_loss_pct, leverage_rate
+    )
+    
+    # 将结果写回 DataFrame
+    df['signal'] = new_signal
+    df['stop_loss_condition'] = stop_loss_price_arr
+    
     return df
 
-def write_file(content, path):
+def write_file(content: str, path: str):
     """
     写入文件
     :param content: 写入内容
@@ -237,15 +285,14 @@ def write_file(content, path):
         f.write(content)
 
 
-# 将数字转为百分数
-def num_to_pct(value):
+def num_to_pct(value: float) -> str:
+    """将数字转为百分数"""
     return '%.2f%%' % (value * 100)
 
 
-def generate_fibonacci_sequence(min_number, max_number):
+def generate_fibonacci_sequence(min_number: float, max_number: float) -> List[float]:
     """
     生成费拨那契数列，支持小数的生成
-    注意：返回的所有数据都是浮点类型(小数)的，如果需要整数需要额外处理
     :param min_number: 最小值
     :param max_number: 最大值
     :return:
@@ -264,11 +311,9 @@ def generate_fibonacci_sequence(min_number, max_number):
             break
     return sequence[:-1]
 
-def revise_data_length(data, data_len):
+def revise_data_length(data: pd.Series, data_len: int) -> pd.Series:
     """
     校正数据长度
-    原数据过长，则进行切片
-    原数据果断，则使用0填充
     :param data: 原数据
     :param data_len: 资金曲线的数据长度
     :return: 校正后的数据
@@ -276,12 +321,12 @@ def revise_data_length(data, data_len):
     if len(data) > data_len:
         data = data[0:data_len]
     elif len(data) < data_len:
-        data = data.append(pd.Series([0] * (data_len - len(data))))
+        data = pd.concat([data, pd.Series([0] * (data_len - len(data)))], ignore_index=True)
 
     return data
 
-def get_benchmark(start_date, end_date, freq):
+def get_benchmark(start_date: str, end_date: str, freq: str) -> pd.DataFrame:
+    """获取基准时间序列"""
     benchmark = pd.DataFrame(pd.date_range(start=start_date, end=end_date, freq=freq))
     benchmark.rename(columns={0: 'candle_begin_time'}, inplace=True)
-
     return benchmark

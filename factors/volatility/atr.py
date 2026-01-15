@@ -25,7 +25,7 @@ def signal(df, para=[14, 1.5], proportion=1, leverage_rate=1):
     high_close = np.abs(df['high'] - df['close'].shift(1))
     close_low = np.abs(df['close'] - df['low'].shift(1))
 
-    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=1)
+    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=0)
     df['atr'] = df['tr'].rolling(window=period, min_periods=1).mean()
 
     df['upper_band'] = df['close'] + multiplier * df['atr']

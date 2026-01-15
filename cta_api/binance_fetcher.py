@@ -9,10 +9,20 @@ import numpy as np
 from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 from config import root_path
-from cta_api.binance_vision_fetcher import fetch_oi as vision_fetch_oi, fetch_funding as vision_fetch_funding
+import config as global_config
+from cta_api.binance_vision_fetcher import (
+    fetch_oi as vision_fetch_oi,
+    fetch_funding as vision_fetch_funding,
+    fetch_klines as vision_fetch_klines,
+)
 SKIP_OI = True
 
 BASE = "https://fapi.binance.com"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+}
+API_SLEEP = getattr(global_config, "api_request_sleep", 0.2)
 
 def _to_ms(s: str) -> int:
     n = int(s[:-1])
@@ -42,7 +52,7 @@ def fetch_klines(symbol: str, interval: str, start: str, end: str, limit: int = 
     rows = []
     while st < et:
         params = {"symbol": sym, "interval": interval, "startTime": st, "endTime": et, "limit": limit}
-        r = requests.get(f"{BASE}/fapi/v1/klines", params=params, timeout=30)
+        r = requests.get(f"{BASE}/fapi/v1/klines", params=params, timeout=30, headers=HEADERS)
         r.raise_for_status()
         data = r.json()
         if not data:
@@ -50,7 +60,7 @@ def fetch_klines(symbol: str, interval: str, start: str, end: str, limit: int = 
         rows.extend(data)
         last = data[-1][0]
         st = last + step
-        time.sleep(0.2)
+        time.sleep(API_SLEEP)
     if not rows:
         return pd.DataFrame()
     arr = np.array(rows, dtype=object)
@@ -99,10 +109,10 @@ def fetch_open_interest_hist(symbol: str, interval: str, start: str, end: str, l
     cur = st
     while cur < et:
         params = {"symbol": sym, "period": period, "limit": limit, "startTime": cur, "endTime": et, "contractType": "PERPETUAL"}
-        r = requests.get(f"{BASE}/futures/data/openInterestHist", params=params, timeout=30)
+        r = requests.get(f"{BASE}/futures/data/openInterestHist", params=params, timeout=30, headers=HEADERS)
         if r.status_code >= 400:
             params = {"pair": sym, "period": period, "limit": limit, "startTime": cur, "endTime": et, "contractType": "PERPETUAL"}
-            r = requests.get(f"{BASE}/futures/data/openInterestHist", params=params, timeout=30)
+            r = requests.get(f"{BASE}/futures/data/openInterestHist", params=params, timeout=30, headers=HEADERS)
         r.raise_for_status()
         data = r.json()
         if not data:
@@ -112,7 +122,7 @@ def fetch_open_interest_hist(symbol: str, interval: str, start: str, end: str, l
         if nxt <= cur:
             break
         cur = nxt + _to_ms(period)
-        time.sleep(0.2)
+        time.sleep(API_SLEEP)
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
@@ -133,7 +143,7 @@ def fetch_open_interest_series(symbol: str, interval: str, start: str, end: str,
     cur = st
     while cur < et:
         params = {"symbol": sym, "period": interval, "contractType": "PERPETUAL", "limit": limit, "startTime": cur, "endTime": et}
-        r = requests.get(f"{BASE}/futures/data/openInterest", params=params, timeout=30)
+        r = requests.get(f"{BASE}/futures/data/openInterest", params=params, timeout=30, headers=HEADERS)
         r.raise_for_status()
         data = r.json()
         if not data:
@@ -143,7 +153,7 @@ def fetch_open_interest_series(symbol: str, interval: str, start: str, end: str,
         if nxt <= cur:
             break
         cur = nxt + _to_ms(interval)
-        time.sleep(0.2)
+        time.sleep(API_SLEEP)
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
@@ -164,7 +174,7 @@ def fetch_funding_rate(symbol: str, start: str, end: str, limit: int = 1000) -> 
     cur = st
     while cur < et:
         params = {"symbol": sym, "limit": limit, "startTime": cur, "endTime": et}
-        r = requests.get(f"{BASE}/fapi/v1/fundingRate", params=params, timeout=30)
+        r = requests.get(f"{BASE}/fapi/v1/fundingRate", params=params, timeout=30, headers=HEADERS)
         r.raise_for_status()
         data = r.json()
         if not data:
@@ -174,7 +184,7 @@ def fetch_funding_rate(symbol: str, start: str, end: str, limit: int = 1000) -> 
         if nxt <= cur:
             break
         cur = nxt + 1
-        time.sleep(0.2)
+        time.sleep(API_SLEEP)
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
@@ -183,7 +193,15 @@ def fetch_funding_rate(symbol: str, start: str, end: str, limit: int = 1000) -> 
     return df[["funding_time","funding_rate"]]
 
 def collect(symbol: str, interval: str, start: str, end: str) -> pd.DataFrame:
-    k = fetch_klines(symbol, interval, start, end)
+    try:
+        k = fetch_klines(symbol, interval, start, end)
+    except Exception:
+        k = pd.DataFrame()
+    if k.empty:
+        try:
+            k = vision_fetch_klines(symbol, interval, start, end)
+        except Exception:
+            k = pd.DataFrame()
     if k.empty:
         return k
     if SKIP_OI:

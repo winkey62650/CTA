@@ -45,7 +45,7 @@ def signal(df, para=[14], proportion=1, leverage_rate=1):
     df['neg_mf_sum'] = df['neg_mf'].rolling(window=period, min_periods=1).sum()
 
     # 计算MFI
-    df['mfi'] = 100 - (100 / (1 + (df['pos_mf'] / df['neg_mf_sum']))
+    df['mfi'] = 100 - (100 / (1 + (df['pos_mf'] / df['neg_mf_sum'])))
 
     # 做多信号: MFI从超卖上穿20 (资金流入增加)
     condition1 = df['mfi'] > 20

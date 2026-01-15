@@ -75,8 +75,7 @@ def signal(df, para=[14, 10], proportion=1, leverage_rate=1):
     df['signal'] = temp['signal']
 
     # 删除中间变量
-    df.drop(['delta', 'gain', 'loss', 'avg_gain', 'avg_loss', 'rs', 'rsi_high', 'rsi_low',
-             'price_high', 'price_low'], axis=1, inplace=True)
+    df.drop(['rsi_high', 'rsi_low', 'price_high', 'price_low'], axis=1, inplace=True)
 
     # 止盈止损
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)

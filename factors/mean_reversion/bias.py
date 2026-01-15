@@ -15,7 +15,7 @@ BIAS > x%表示超买(卖出)，BIAS < -x%表示超卖(买入)。
 参数n范围: [5, 10, 15, 20, 30, 50]
 """
 
-from cma_api.function import *
+from cta_api.function import *
 
 def signal(df, para=[10, 3.0], proportion=1, leverage_rate=1):
     period = para[0]
@@ -25,14 +25,15 @@ def signal(df, para=[10, 3.0], proportion=1, leverage_rate=1):
 
     df['bias'] = (df['close'] - df['ma']) / df['ma'] * 100
 
-    df['bias_signal'] = np.where(df['bias'] > threshold, 1, -1, np.where(df['bias'] < -threshold, 1, 0))
+    df['bias_signal'] = np.where(df['bias'] > threshold, 1, np.where(df['bias'] < -threshold, -1, 0))
 
-    buy_signal = (df['bias_signal'] == -1) & (df['bias_signal'].shift(1) > threshold)
+    buy_signal = (df['bias_signal'] == -1) & (df['bias_signal'].shift(1) != -1)
     df.loc[buy_signal, 'signal_long'] = 1
-    df.loc[df['bias_signal'] >= -threshold, 'signal_long'] = 0
+    df.loc[df['bias_signal'] != -1, 'signal_long'] = 0
 
-    sell_signal = (df['bias_signal'] == 1) & (df['bias_signal'].shift(1) < -threshold)
-    df.loc[sell_signal, 'signal_short'] = 1
+    sell_signal = (df['bias_signal'] == 1) & (df['bias_signal'].shift(1) != 1)
+    df.loc[sell_signal, 'signal_short'] = -1
+    df.loc[df['bias_signal'] != 1, 'signal_short'] = 0
 
     df['signal'] = df[['signal_long', 'signal_short']].sum(axis=1, min_count=1, skipna=True)
 

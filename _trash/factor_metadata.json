@@ -1,0 +1,674 @@
+[
+  {
+    "name": "xbx",
+    "path": "factors/xbx.py",
+    "category": "factors",
+    "description": "No description available",
+    "param_count": 3
+  },
+  {
+    "name": "mass_index",
+    "path": "factors/momentum/mass_index.py",
+    "category": "momentum",
+    "description": "质量指数策略 (Mass Index)",
+    "param_count": 1
+  },
+  {
+    "name": "vma",
+    "path": "factors/momentum/vma.py",
+    "category": "momentum",
+    "description": "可变移动平均策略 (Variable Moving Average - VMA)",
+    "param_count": 1
+  },
+  {
+    "name": "psy_line",
+    "path": "factors/momentum/psy_line.py",
+    "category": "momentum",
+    "description": "心理线策略 (PSY Line)",
+    "param_count": 1
+  },
+  {
+    "name": "vortex",
+    "path": "factors/momentum/vortex.py",
+    "category": "momentum",
+    "description": "Vortex涡流策略",
+    "param_count": 1
+  },
+  {
+    "name": "emv",
+    "path": "factors/momentum/emv.py",
+    "category": "momentum",
+    "description": "简便运动指标策略 (Ease of Movement - EMV)",
+    "param_count": 1
+  },
+  {
+    "name": "pvi",
+    "path": "factors/momentum/pvi.py",
+    "category": "momentum",
+    "description": "正量指标策略 (Positive Volume Index - PVI)",
+    "param_count": 1
+  },
+  {
+    "name": "bollinger_osc",
+    "path": "factors/momentum/bollinger_osc.py",
+    "category": "momentum",
+    "description": "布林带震荡指标策略 (Bollinger Oscillator)",
+    "param_count": 2
+  },
+  {
+    "name": "macd",
+    "path": "factors/momentum/macd.py",
+    "category": "momentum",
+    "description": "标准MACD策略 (Moving Average Convergence Divergence)",
+    "param_count": 3
+  },
+  {
+    "name": "nvi",
+    "path": "factors/momentum/nvi.py",
+    "category": "momentum",
+    "description": "负量指标策略 (Negative Volume Index - NVI)",
+    "param_count": 1
+  },
+  {
+    "name": "roc",
+    "path": "factors/momentum/roc.py",
+    "category": "momentum",
+    "description": "ROC指标策略 (Rate of Change)",
+    "param_count": 1
+  },
+  {
+    "name": "stochastic_osc",
+    "path": "factors/momentum/stochastic_osc.py",
+    "category": "momentum",
+    "description": "随机震荡指标策略 (Stochastic Oscillator)",
+    "param_count": 2
+  },
+  {
+    "name": "rvi_mom",
+    "path": "factors/momentum/rvi_mom.py",
+    "category": "momentum",
+    "description": "相对活力指数 (RVI Momentum)",
+    "param_count": 1
+  },
+  {
+    "name": "mfi",
+    "path": "factors/momentum/mfi.py",
+    "category": "momentum",
+    "description": "资金流量指数策略 (Money Flow Index - MFI)",
+    "param_count": 1
+  },
+  {
+    "name": "coppock",
+    "path": "factors/momentum/coppock.py",
+    "category": "momentum",
+    "description": "Coppock Curve (估波曲线)",
+    "param_count": 1
+  },
+  {
+    "name": "rsi",
+    "path": "factors/momentum/rsi.py",
+    "category": "momentum",
+    "description": "RSI指标策略 (Relative Strength Index)",
+    "param_count": 1
+  },
+  {
+    "name": "trix",
+    "path": "factors/momentum/trix.py",
+    "category": "momentum",
+    "description": "TRIX指标策略 (TRIX)",
+    "param_count": 1
+  },
+  {
+    "name": "aroon",
+    "path": "factors/momentum/aroon.py",
+    "category": "momentum",
+    "description": "Aroon指标策略 (Aroon Oscillator)",
+    "param_count": 1
+  },
+  {
+    "name": "chaikin_osc",
+    "path": "factors/momentum/chaikin_osc.py",
+    "category": "momentum",
+    "description": "Chaikin震荡指标策略 (Chaikin Oscillator)",
+    "param_count": 1
+  },
+  {
+    "name": "momentum",
+    "path": "factors/momentum/momentum.py",
+    "category": "momentum",
+    "description": "动量指标策略 (Momentum)",
+    "param_count": 1
+  },
+  {
+    "name": "dpo",
+    "path": "factors/momentum/dpo.py",
+    "category": "momentum",
+    "description": "DPO指标策略 (Detrended Price Oscillator)",
+    "param_count": 2
+  },
+  {
+    "name": "t3_avg",
+    "path": "factors/trend/t3_avg.py",
+    "category": "trend",
+    "description": "T3移动平均线策略 (T3 Moving Average)",
+    "param_count": 1
+  },
+  {
+    "name": "donchian",
+    "path": "factors/trend/donchian.py",
+    "category": "trend",
+    "description": "通道突破策略 (Donchian Channel)",
+    "param_count": 1
+  },
+  {
+    "name": "price_channel",
+    "path": "factors/trend/price_channel.py",
+    "category": "trend",
+    "description": "价格通道回归策略 (Price Channel Regression)",
+    "param_count": 1
+  },
+  {
+    "name": "linear_reg",
+    "path": "factors/trend/linear_reg.py",
+    "category": "trend",
+    "description": "线性回归线策略 (Linear Regression Trend Line)",
+    "param_count": 1
+  },
+  {
+    "name": "super_trend_single",
+    "path": "factors/trend/super_trend_single.py",
+    "category": "trend",
+    "description": "单参数超级趋势策略 (Single Parameter SuperTrend)",
+    "param_count": 1
+  },
+  {
+    "name": "keltner",
+    "path": "factors/trend/keltner.py",
+    "category": "trend",
+    "description": "Keltner通道策略",
+    "param_count": 2
+  },
+  {
+    "name": "ma_envelope",
+    "path": "factors/trend/ma_envelope.py",
+    "category": "trend",
+    "description": "移动平均包络策略 (MA Envelope)",
+    "param_count": 2
+  },
+  {
+    "name": "adx",
+    "path": "factors/trend/adx.py",
+    "category": "trend",
+    "description": "ADX平均方向指数策略",
+    "param_count": 2
+  },
+  {
+    "name": "wma",
+    "path": "factors/trend/wma.py",
+    "category": "trend",
+    "description": "WMA加权移动平均策略",
+    "param_count": 1
+  },
+  {
+    "name": "macd",
+    "path": "factors/trend/macd.py",
+    "category": "trend",
+    "description": "标准MACD策略 (Moving Average Convergence Divergence)",
+    "param_count": 3
+  },
+  {
+    "name": "ma_cross",
+    "path": "factors/trend/ma_cross.py",
+    "category": "trend",
+    "description": "简单双均线交叉策略 (SMA Cross)",
+    "param_count": 2
+  },
+  {
+    "name": "hma",
+    "path": "factors/trend/hma.py",
+    "category": "trend",
+    "description": "赫尔移动平均策略 (Hull Moving Average - HMA)",
+    "param_count": 2
+  },
+  {
+    "name": "macd_zero",
+    "path": "factors/trend/macd_zero.py",
+    "category": "trend",
+    "description": "MACD零轴策略 (MACD Zero Line)",
+    "param_count": 2
+  },
+  {
+    "name": "ichimoku",
+    "path": "factors/trend/ichimoku.py",
+    "category": "trend",
+    "description": "Ichimoku云图策略",
+    "param_count": 3
+  },
+  {
+    "name": "kama",
+    "path": "factors/trend/kama.py",
+    "category": "trend",
+    "description": "自适应均线策略 (Kaufman's Adaptive Moving Average - KAMA)",
+    "param_count": 2
+  },
+  {
+    "name": "ema_cross",
+    "path": "factors/trend/ema_cross.py",
+    "category": "trend",
+    "description": "指数双均线交叉策略 (EMA Cross)",
+    "param_count": 2
+  },
+  {
+    "name": "parabolic_sar",
+    "path": "factors/trend/parabolic_sar.py",
+    "category": "trend",
+    "description": "Parabolic SAR抛物线转向策略",
+    "param_count": 3
+  },
+  {
+    "name": "ichimoku_adv",
+    "path": "factors/trend/ichimoku_adv.py",
+    "category": "trend",
+    "description": "一目均衡表策略 (Advanced Ichimoku)",
+    "param_count": 3
+  },
+  {
+    "name": "macd_hist",
+    "path": "factors/trend/macd_hist.py",
+    "category": "trend",
+    "description": "MACD柱状图策略 (MACD Histogram)",
+    "param_count": 3
+  },
+  {
+    "name": "turtle_trading",
+    "path": "factors/trend/turtle_trading.py",
+    "category": "trend",
+    "description": "海龟交易法则 (Turtle Trading System)",
+    "param_count": 1
+  },
+  {
+    "name": "triple_ma",
+    "path": "factors/trend/triple_ma.py",
+    "category": "trend",
+    "description": "三均线系统策略 (Triple Moving Average)",
+    "param_count": 3
+  },
+  {
+    "name": "ma_band",
+    "path": "factors/trend/ma_band.py",
+    "category": "trend",
+    "description": "多重均线带策略 (MA Band)",
+    "param_count": 3
+  },
+  {
+    "name": "dmi",
+    "path": "factors/trend/dmi.py",
+    "category": "trend",
+    "description": "DPO去势策略",
+    "param_count": 2
+  },
+  {
+    "name": "atr",
+    "path": "factors/volatility/atr.py",
+    "category": "volatility",
+    "description": "ATR平均真实波幅策略",
+    "param_count": 2
+  },
+  {
+    "name": "choppiness",
+    "path": "factors/volatility/choppiness.py",
+    "category": "volatility",
+    "description": "Choppiness Index (波动指数)",
+    "param_count": 1
+  },
+  {
+    "name": "ulcer_index",
+    "path": "factors/volatility/ulcer_index.py",
+    "category": "volatility",
+    "description": "Ulcer Index (溃疡指数)",
+    "param_count": 1
+  },
+  {
+    "name": "kdj",
+    "path": "factors/oscillator/kdj.py",
+    "category": "oscillator",
+    "description": "KDJ随机指标策略",
+    "param_count": 3
+  },
+  {
+    "name": "stochastic",
+    "path": "factors/oscillator/stochastic.py",
+    "category": "oscillator",
+    "description": "Stochastic随机指标策略",
+    "param_count": 3
+  },
+  {
+    "name": "cci",
+    "path": "factors/oscillator/cci.py",
+    "category": "oscillator",
+    "description": "CCI商品通道策略",
+    "param_count": 3
+  },
+  {
+    "name": "rsi",
+    "path": "factors/oscillator/rsi.py",
+    "category": "oscillator",
+    "description": "相对强弱指标策略 (RSI)",
+    "param_count": 3
+  },
+  {
+    "name": "trix",
+    "path": "factors/oscillator/trix.py",
+    "category": "oscillator",
+    "description": "TRIX随机指标策略",
+    "param_count": 2
+  },
+  {
+    "name": "williams_r",
+    "path": "factors/oscillator/williams_r.py",
+    "category": "oscillator",
+    "description": "Williams %R策略",
+    "param_count": 3
+  },
+  {
+    "name": "ad_ch",
+    "path": "factors/breakout/ad_ch.py",
+    "category": "breakout",
+    "description": "A/D线突破策略 (Accumulation/Distribution Line)",
+    "param_count": 1
+  },
+  {
+    "name": "donchian",
+    "path": "factors/breakout/donchian.py",
+    "category": "breakout",
+    "description": "Donchian通道突破策略",
+    "param_count": 2
+  },
+  {
+    "name": "vwap_ch",
+    "path": "factors/breakout/vwap_ch.py",
+    "category": "breakout",
+    "description": "VWAP突破策略 (Volume Weighted Average Price)",
+    "param_count": 1
+  },
+  {
+    "name": "vol_ma_ch",
+    "path": "factors/breakout/vol_ma_ch.py",
+    "category": "breakout",
+    "description": "成交量均线突破策略 (Volume MA Breakout)",
+    "param_count": 1
+  },
+  {
+    "name": "obv_ch",
+    "path": "factors/breakout/obv_ch.py",
+    "category": "breakout",
+    "description": "OBV突破策略 (OBV Breakout)",
+    "param_count": 1
+  },
+  {
+    "name": "fake_break",
+    "path": "factors/breakout/fake_break.py",
+    "category": "breakout",
+    "description": "假突破过滤策略 (Fake Breakout Filter)",
+    "param_count": 1
+  },
+  {
+    "name": "vol_break",
+    "path": "factors/breakout/vol_break.py",
+    "category": "breakout",
+    "description": "成交量突破策略 (Volume Breakout)",
+    "param_count": 2
+  },
+  {
+    "name": "mean_break",
+    "path": "factors/breakout/mean_break.py",
+    "category": "breakout",
+    "description": "均值突破策略 (Mean Breakout)",
+    "param_count": 1
+  },
+  {
+    "name": "atr_ch",
+    "path": "factors/breakout/atr_ch.py",
+    "category": "breakout",
+    "description": "ATR通道突破策略 (ATR Channel)",
+    "param_count": 2
+  },
+  {
+    "name": "turtle_ch",
+    "path": "factors/breakout/turtle_ch.py",
+    "category": "breakout",
+    "description": "海龟通道突破策略 (Turtle Channel)",
+    "param_count": 1
+  },
+  {
+    "name": "hma_revert",
+    "path": "factors/mean_reversion/hma_revert.py",
+    "category": "mean_reversion",
+    "description": "HMA均值回归策略 (HMA Mean Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "bb_breakout",
+    "path": "factors/mean_reversion/bb_breakout.py",
+    "category": "mean_reversion",
+    "description": "布林带突破策略 (Bollinger Bands Breakout)",
+    "param_count": 2
+  },
+  {
+    "name": "bias",
+    "path": "factors/mean_reversion/bias.py",
+    "category": "mean_reversion",
+    "description": "乖离率(BIAS)策略",
+    "param_count": 2
+  },
+  {
+    "name": "bb_dynamic",
+    "path": "factors/mean_reversion/bb_dynamic.py",
+    "category": "mean_reversion",
+    "description": "动态布林带策略 (Dynamic Bollinger Bands)",
+    "param_count": 2
+  },
+  {
+    "name": "bb_percentb",
+    "path": "factors/mean_reversion/bb_percentb.py",
+    "category": "mean_reversion",
+    "description": "布林带%B策略 (Bollinger Band %B)",
+    "param_count": 2
+  },
+  {
+    "name": "kalman",
+    "path": "factors/mean_reversion/kalman.py",
+    "category": "mean_reversion",
+    "description": "Kalman滤波均值回归策略 (Kalman Filter Mean Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "kdj",
+    "path": "factors/mean_reversion/kdj.py",
+    "category": "mean_reversion",
+    "description": "随机指标策略 (KDJ / Stochastic)",
+    "param_count": 3
+  },
+  {
+    "name": "quantile_revert",
+    "path": "factors/mean_reversion/quantile_revert.py",
+    "category": "mean_reversion",
+    "description": "分位数回归策略 (Quantile Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "atr_revert",
+    "path": "factors/mean_reversion/atr_revert.py",
+    "category": "mean_reversion",
+    "description": "ATR均值回归策略 (ATR Mean Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "cmo",
+    "path": "factors/mean_reversion/cmo.py",
+    "category": "mean_reversion",
+    "description": "钱德动量摆动策略 (Chande Momentum Oscillator - CMO)",
+    "param_count": 1
+  },
+  {
+    "name": "cci",
+    "path": "factors/mean_reversion/cci.py",
+    "category": "mean_reversion",
+    "description": "商品通道指数策略 (Commodity Channel Index - CCI)",
+    "param_count": 3
+  },
+  {
+    "name": "bb_mean_revert",
+    "path": "factors/mean_reversion/bb_mean_revert.py",
+    "category": "mean_reversion",
+    "description": "布林带均值回归策略 (Bollinger Bands Mean Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "zscore",
+    "path": "factors/mean_reversion/zscore.py",
+    "category": "mean_reversion",
+    "description": "Z-Score标准化策略",
+    "param_count": 2
+  },
+  {
+    "name": "mean_channel",
+    "path": "factors/mean_reversion/mean_channel.py",
+    "category": "mean_reversion",
+    "description": "均值回归通道策略",
+    "param_count": 2
+  },
+  {
+    "name": "bb_width",
+    "path": "factors/mean_reversion/bb_width.py",
+    "category": "mean_reversion",
+    "description": "布林带宽度策略 (Bollinger Band Width)",
+    "param_count": 2
+  },
+  {
+    "name": "ultimate_osc",
+    "path": "factors/mean_reversion/ultimate_osc.py",
+    "category": "mean_reversion",
+    "description": "最终震荡指标策略 (Ultimate Oscillator - UO)",
+    "param_count": 3
+  },
+  {
+    "name": "rsi_divergence",
+    "path": "factors/mean_reversion/rsi_divergence.py",
+    "category": "mean_reversion",
+    "description": "RSI背离策略 (RSI Divergence)",
+    "param_count": 2
+  },
+  {
+    "name": "bollinger",
+    "path": "factors/mean_reversion/bollinger.py",
+    "category": "mean_reversion",
+    "description": "标准布林带策略 (Bollinger Bands - Mean Reversion)",
+    "param_count": 2
+  },
+  {
+    "name": "williams_r",
+    "path": "factors/mean_reversion/williams_r.py",
+    "category": "mean_reversion",
+    "description": "威廉指标策略 (Williams %R)",
+    "param_count": 3
+  },
+  {
+    "name": "ad_ch",
+    "path": "factors/volume/ad_ch.py",
+    "category": "volume",
+    "description": "累积/派发线策略 (Accumulation/Distribution Line - A/D)",
+    "param_count": 1
+  },
+  {
+    "name": "zero_osc",
+    "path": "factors/volume/zero_osc.py",
+    "category": "volume",
+    "description": "零轴震荡指标策略 (Zero Line Oscillator)",
+    "param_count": 1
+  },
+  {
+    "name": "vroc",
+    "path": "factors/volume/vroc.py",
+    "category": "volume",
+    "description": "Volume ROC (成交量变动率策略)",
+    "param_count": 1
+  },
+  {
+    "name": "vwap",
+    "path": "factors/volume/vwap.py",
+    "category": "volume",
+    "description": "VWAP成交量加权均价策略",
+    "param_count": 1
+  },
+  {
+    "name": "obv_ch",
+    "path": "factors/volume/obv_ch.py",
+    "category": "volume",
+    "description": "平衡成交量策略 (On-Balance Volume - OBV)",
+    "param_count": 1
+  },
+  {
+    "name": "force_index",
+    "path": "factors/volume/force_index.py",
+    "category": "volume",
+    "description": "Force Index (强力指数)",
+    "param_count": 1
+  },
+  {
+    "name": "pos_neg",
+    "path": "factors/volume/pos_neg.py",
+    "category": "volume",
+    "description": "正负波动策略 (Positive/Negative Divergence)",
+    "param_count": 1
+  },
+  {
+    "name": "mfi",
+    "path": "factors/volume/mfi.py",
+    "category": "volume",
+    "description": "资金流量指数策略 (Money Flow Index - MFI)",
+    "param_count": 1
+  },
+  {
+    "name": "obv",
+    "path": "factors/volume/obv.py",
+    "category": "volume",
+    "description": "OBV能量潮策略",
+    "param_count": 1
+  },
+  {
+    "name": "vwma_ch",
+    "path": "factors/volume/vwma_ch.py",
+    "category": "volume",
+    "description": "VWMA突破策略 (VWMA Breakout)",
+    "param_count": 1
+  },
+  {
+    "name": "dx",
+    "path": "factors/volume/dx.py",
+    "category": "volume",
+    "description": "动向指数策略 (Directional Movement Index - DX)",
+    "param_count": 1
+  },
+  {
+    "name": "chaikin_osc",
+    "path": "factors/volume/chaikin_osc.py",
+    "category": "volume",
+    "description": "Chaikin振荡器策略 (Chaikin Oscillator)",
+    "param_count": 1
+  },
+  {
+    "name": "cmf",
+    "path": "factors/volume/cmf.py",
+    "category": "volume",
+    "description": "Chaikin Money Flow (资金流向指标)",
+    "param_count": 1
+  },
+  {
+    "name": "rvi",
+    "path": "factors/volume/rvi.py",
+    "category": "volume",
+    "description": "RVI策略 (Relative Volatility Index)",
+    "param_count": 1
+  }
+]

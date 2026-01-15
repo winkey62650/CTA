@@ -22,26 +22,32 @@ def signal(df, para=[14, 25], proportion=1, leverage_rate=1):
     adx_threshold = para[1]
 
     high_low = df['high'] - df['low']
-    high_close = np.abs(df['high'] - df['close'])
-    close_low = np.abs(df['close'] - df['low'])
+    high_close = np.abs(df['high'] - df['close'].shift(1))
+    close_low = np.abs(df['close'] - df['low'].shift(1))
 
-    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=1)
+    df['tr'] = np.maximum.reduce([high_low, high_close, close_low], axis=0)
 
-    df['dm_plus'] = df['tr'].where(df['tr'] > 0, df['tr'], -df['tr'])
-    df['dm_minus'] = np.abs(df['dm_plus']) + np.abs(df['dm_minus'])
+    up_move = df['high'] - df['high'].shift(1)
+    down_move = df['low'].shift(1) - df['low']
 
-    df['tr'] = df['dm_plus'].rolling(window=period, min_periods=1).mean()
+    df['dm_plus'] = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    df['dm_minus'] = np.where((down_move > up_move) & (down_move > 0), down_move, 0.0)
+
+    df['tr_smooth'] = df['tr'].rolling(window=period, min_periods=1).mean()
+    df['dm_plus_smooth'] = df['dm_plus'].rolling(window=period, min_periods=1).mean()
     df['dm_minus_smooth'] = df['dm_minus'].rolling(window=period, min_periods=1).mean()
 
-    df['dx'] = (df['dm_plus'] + df['dm_minus_smooth']) / 2
+    df['di_plus'] = 100 * (df['dm_plus_smooth'] / df['tr_smooth'])
+    df['di_minus'] = 100 * (df['dm_minus_smooth'] / df['tr_smooth'])
 
+    df['dx'] = 100 * np.abs(df['di_plus'] - df['di_minus']) / (df['di_plus'] + df['di_minus'])
     df['adx'] = df['dx'].rolling(window=period, min_periods=1).mean()
 
     df['trend_strength'] = df['adx']
 
     trend_filter = df['trend_strength'] >= adx_threshold
 
-    prev_trend = trend_filter.shift(1)
+    prev_trend = trend_filter.shift(1).fillna(False).astype(bool)
 
     buy_signal = trend_filter & (~prev_trend) & (df['close'] > df['close'].shift(1))
     df.loc[buy_signal, 'signal_long'] = 1
@@ -54,7 +60,7 @@ def signal(df, para=[14, 25], proportion=1, leverage_rate=1):
     temp = temp[temp['signal'] != temp['signal'].shift(1)]
     df['signal'] = temp['signal']
 
-    df.drop(['tr', 'dm_plus', 'dm_minus', 'tr', 'dx', 'adx', 'trend_strength', 'signal_long', 'signal_short'], axis=1, inplace=True)
+    df.drop(['tr', 'dm_plus', 'dm_minus', 'tr_smooth', 'dm_plus_smooth', 'dm_minus_smooth', 'di_plus', 'di_minus', 'dx', 'adx', 'trend_strength', 'signal_long', 'signal_short'], axis=1, inplace=True)
     df = process_stop_loss_close(df, proportion, leverage_rate=leverage_rate)
     return df
 

@@ -118,7 +118,7 @@ def draw_equity_curve_mat(df, rtn, trade, title, path='./pic.html', show=True):
         if res != 0:
             os.system('open ' + path)
 
-def draw_equity_curve_mat_V1(df, rtn, trade, title, path='./pic.html', show=True):
+def draw_equity_curve_mat_V1(df, rtn, trade, title, path='./pic.html', show=True, factor_col_name=None):
     """
     绘制附带K线的资金曲线
     :param df: 包含资金曲线列的df
@@ -126,17 +126,16 @@ def draw_equity_curve_mat_V1(df, rtn, trade, title, path='./pic.html', show=True
     :param title: 表名
     :param path: 保存路径
     :param show: 是否展示图片
+    :param factor_col_name: 因子列名（用于显示因子监控图）
     :return:
     """
     values = [[value] for value in rtn.T.iloc[:, 0].tolist()]
 
     g = trade.copy()
-    # 买卖点
     mark_point_list = []
     for i in g.index:
         buy_time = i
         sell_time = g.loc[i, 'end_bar']
-        # 标记买卖点，在最高价上方标记
         y = df.loc[df['candle_begin_time'] == buy_time, 'high'].iloc[0] * 1.05
         mark_point_list.append({
             'x': buy_time,
@@ -155,68 +154,142 @@ def draw_equity_curve_mat_V1(df, rtn, trade, title, path='./pic.html', show=True
             'arrowside': 'end',
             'arrowhead': 7
         })
-    
-    # 创建一个带有子图的图形
-    fig = make_subplots(
-        rows=3, cols=1, 
-        shared_xaxes=True, 
-        vertical_spacing=0.02,
-        specs=[[{"type": "table"}], 
-               [{"type": "xy", "secondary_y": True}],
-               [{"type": "xy"}]],
-        row_heights=[0.1, 0.8, 0.1]
-    )
 
-    trace1 = go.Candlestick(
-        x=df['candle_begin_time'],
-        open=df['open'],
-        high=df['high'],
-        low=df['low'],
-        close=df['close'],
-    )
+    if factor_col_name and factor_col_name in df.columns:
+        fig = make_subplots(
+            rows=4, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            specs=[[{"type": "table"}],
+                   [{"type": "xy"}],
+                   [{"type": "xy", "secondary_y": True}],
+                   [{"type": "xy"}]],
+            row_heights=[0.08, 0.5, 0.25, 0.17]
+        )
 
-    trace2 = go.Scatter(
-        x=df['candle_begin_time'], 
-        y=df['equity_curve'], 
-        name='资金曲线', 
-        line=dict(color='#4682B4'),
-    )
+        trace_candlestick = go.Candlestick(
+            x=df['candle_begin_time'],
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+            name='K线'
+        )
 
-    trace3 = go.Bar(
-        x=df['candle_begin_time'],
-        y=df['volume'],
-        name='成交量',
-        marker=dict(color='rgba(158,202,225,0.5)')
-    )
+        trace_equity = go.Scatter(
+            x=df['candle_begin_time'],
+            y=df['equity_curve'],
+            name='资金曲线',
+            line=dict(color='#4682B4')
+        )
 
-    # 添加轨迹到特定的子图
-    fig.add_trace(
-        go.Table(
-            header=dict(values=list(rtn.columns),
-                        fill_color='paleturquoise',
-                        align='center'),
-            cells=dict(values=values,
-                       fill_color='lavender',
-                       align='center'),
-            columnwidth=[40]*len(rtn.columns)),
-        row=1, col=1
-    )
-    fig.add_trace(trace1, secondary_y=False, row=2, col=1)
-    fig.add_trace(trace2, secondary_y=True, row=2, col=1)
-    fig.add_trace(trace3, row=3, col=1)
+        trace_volume = go.Bar(
+            x=df['candle_begin_time'],
+            y=df['volume'],
+            name='成交量',
+            marker=dict(color='rgba(158,202,225,0.5)')
+        )
+
+        trace_factor = go.Scatter(
+            x=df['candle_begin_time'],
+            y=df[factor_col_name],
+            name=f'{factor_col_name}',
+            line=dict(color='orange')
+        )
+
+        fig.add_trace(
+            go.Table(
+                header=dict(values=list(rtn.columns),
+                           fill_color='paleturquoise',
+                           align='center'),
+                cells=dict(values=values,
+                          fill_color='lavender',
+                          align='center'),
+                columnwidth=[40]*len(rtn.columns)),
+            row=1, col=1
+        )
+        fig.add_trace(trace_candlestick, row=2, col=1)
+        fig.add_trace(trace_equity, row=3, col=1, secondary_y=False)
+        fig.add_trace(trace_factor, row=3, col=1, secondary_y=True)
+        fig.add_trace(trace_volume, row=4, col=1)
+
+        fig.update_layout(
+            template='none',
+            hovermode='x',
+            width=1650,
+            height=1100,
+            annotations=mark_point_list,
+            title=title,
+            yaxis=dict(title='价格', side='left'),
+            yaxis2=dict(title='资金曲线', anchor='x', overlaying='y', side='left'),
+            yaxis3=dict(title=f'{factor_col_name}', anchor='free', overlaying='y', side='right'),
+            yaxis4=dict(title='成交量'),
+            xaxis_rangeslider=dict(visible=False),
+            plot_bgcolor='white'
+        )
+    else:
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.02,
+            specs=[[{"type": "table"}],
+                   [{"type": "xy", "secondary_y": True}],
+                   [{"type": "xy"}]],
+            row_heights=[0.1, 0.8, 0.1]
+        )
+
+        trace1 = go.Candlestick(
+            x=df['candle_begin_time'],
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+        )
+
+        trace2 = go.Scatter(
+            x=df['candle_begin_time'],
+            y=df['equity_curve'],
+            name='资金曲线',
+            line=dict(color='#4682B4'),
+        )
+
+        trace3 = go.Bar(
+            x=df['candle_begin_time'],
+            y=df['volume'],
+            name='成交量',
+            marker=dict(color='rgba(158,202,225,0.5)')
+        )
+
+        fig.add_trace(
+            go.Table(
+                header=dict(values=list(rtn.columns),
+                           fill_color='paleturquoise',
+                           align='center'),
+                cells=dict(values=values,
+                          fill_color='lavender',
+                          align='center'),
+                columnwidth=[40]*len(rtn.columns)),
+            row=1, col=1
+        )
+        fig.add_trace(trace1, secondary_y=False, row=2, col=1)
+        fig.add_trace(trace2, secondary_y=True, row=2, col=1)
+        fig.add_trace(trace3, row=3, col=1)
+
+        fig.update_layout(
+            template='none',
+            hovermode='x',
+            width=1650,
+            height=950,
+            annotations=mark_point_list,
+            title=title,
+            yaxis=dict(title='K线', side='left'),
+            yaxis2=dict(title='资金曲线', anchor='x', overlaying='y', side='right'),
+            yaxis3=dict(title='成交量'),
+            xaxis_rangeslider=dict(visible=False),
+            plot_bgcolor='white'
+        )
 
     fig.update_layout(
-        template='none',
-        hovermode='x',
-        width=1650,
-        height=950,
-        annotations=mark_point_list,
-        title=title,
-        yaxis=dict(title='K线', side='left'),
-        yaxis2=dict(title='资金曲线', anchor='x', overlaying='y', side='right'),
-        yaxis3=dict(title='成交量'),
-        xaxis_rangeslider=dict(visible=False),
-        plot_bgcolor='white',
         updatemenus=[
             dict(
                 buttons=[
@@ -235,7 +308,6 @@ def draw_equity_curve_mat_V1(df, rtn, trade, title, path='./pic.html', show=True
 
     fig.write_html(path, auto_open=False)
 
-    # 打开图片的html文件，需要判断系统的类型
     if show:
         res = os.system('start ' + path)
         if res != 0:

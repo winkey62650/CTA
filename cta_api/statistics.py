@@ -70,12 +70,19 @@ def strategy_evaluate(equity_curve, trade, rule_type):
     results.loc[0, '累积净值'] = round(equity_curve['equity_curve'].iloc[-1], 2)
 
     # ===计算年化收益
-    if rule_type.endswith('T'):
-        rule = int(rule_type[:-1])
+    if rule_type.endswith('T') or rule_type.endswith('min'):
+        rule = int(rule_type[:-1]) if rule_type[:-1].isdigit() else int(rule_type[:-3])
         n = 24*60/rule
-    if rule_type.endswith('H'):
+    elif rule_type.lower().endswith('h'):
         rule = int(rule_type[:-1])
         n = 24/rule
+    elif rule_type.lower().endswith('d'):
+        rule = int(rule_type[:-1])
+        n = 1/rule
+    else:
+        # Default fallback or error handling
+        n = 24 # Assume 1H if unknown
+
 
     # 计算总收益
     total_return = equity_curve['equity_curve'].iloc[-1] / equity_curve['equity_curve'].iloc[0]
@@ -108,43 +115,73 @@ def strategy_evaluate(equity_curve, trade, rule_type):
     # ===年化收益/回撤比
     results.loc[0, '年化收益/回撤比'] = round(annual_return / abs(max_draw_down), 2)
 
+    # ===夏普比率
+    # 计算年化波动率
+    periods_per_year = n * 365
+    volatility = equity_curve['equity_change'].std() * (periods_per_year ** 0.5)
+    # 计算夏普比率 (假设无风险利率为0)
+    # 使用 CAGR (年化收益) 作为分子
+    if volatility == 0:
+        sharpe_ratio = 0
+    else:
+        sharpe_ratio = annual_return / volatility
+    results.loc[0, '夏普比率'] = round(sharpe_ratio, 2)
+
     # ===统计每笔交易
-    results.loc[0, '盈利笔数'] = len(trade.loc[trade['change'] > 0])  # 盈利笔数
-    results.loc[0, '亏损笔数'] = len(trade.loc[trade['change'] <= 0])  # 亏损笔数
-    results.loc[0, '胜率'] = format(results.loc[0, '盈利笔数'] / len(trade), '.2%')  # 胜率
+    if trade.empty:
+        results.loc[0, '盈利笔数'] = 0
+        results.loc[0, '亏损笔数'] = 0
+        results.loc[0, '胜率'] = '0.00%'
+        results.loc[0, '每笔交易平均盈亏'] = '0.00%'
+        results.loc[0, '盈亏收益比'] = 0
+        results.loc[0, '单笔最大盈利'] = '0.00%'
+        results.loc[0, '单笔最大亏损'] = '0.00%'
+        results.loc[0, '单笔最长持有时间'] = '0'
+        results.loc[0, '单笔最短持有时间'] = '0'
+        results.loc[0, '平均持仓周期'] = '0'
+        results.loc[0, '最大连续盈利笔数'] = 0
+        results.loc[0, '最大连续亏损笔数'] = 0
+    else:
+        results.loc[0, '盈利笔数'] = len(trade.loc[trade['change'] > 0])  # 盈利笔数
+        results.loc[0, '亏损笔数'] = len(trade.loc[trade['change'] <= 0])  # 亏损笔数
+        results.loc[0, '胜率'] = format(results.loc[0, '盈利笔数'] / len(trade), '.2%')  # 胜率
 
-    results.loc[0, '每笔交易平均盈亏'] = format(trade['change'].mean(), '.2%')  # 每笔交易平均盈亏
-    results.loc[0, '盈亏收益比'] = round(trade.loc[trade['change'] > 0]['change'].mean() / \
-                                         trade.loc[trade['change'] < 0]['change'].mean() * (-1), 2)  # 盈亏比
+        results.loc[0, '每笔交易平均盈亏'] = format(trade['change'].mean(), '.2%')  # 每笔交易平均盈亏
+        
+        avg_loss = trade.loc[trade['change'] < 0]['change'].mean()
+        if avg_loss == 0 or pd.isna(avg_loss):
+             results.loc[0, '盈亏收益比'] = 0
+        else:
+             results.loc[0, '盈亏收益比'] = round(trade.loc[trade['change'] > 0]['change'].mean() / avg_loss * (-1), 2)  # 盈亏比
 
-    results.loc[0, '单笔最大盈利'] = format(trade['change'].max(), '.2%')  # 单笔最大盈利
-    results.loc[0, '单笔最大亏损'] = format(trade['change'].min(), '.2%')  # 单笔最大亏损
+        results.loc[0, '单笔最大盈利'] = format(trade['change'].max(), '.2%')  # 单笔最大盈利
+        results.loc[0, '单笔最大亏损'] = format(trade['change'].min(), '.2%')  # 单笔最大亏损
 
-    # ===统计持仓时间，会比实际时间少一根K线的是距离
-    trade['持仓时间'] = trade['end_bar'] - trade.index
-    max_days, max_seconds = trade['持仓时间'].max().days, trade['持仓时间'].max().seconds
-    max_hours = max_seconds // 3600
-    max_minute = (max_seconds - max_hours * 3600) // 60
-    results.loc[0, '单笔最长持有时间'] = str(max_days) + ' 天 ' + str(max_hours) + ' 小时 ' + str(
-        max_minute) + ' 分钟'  # 单笔最长持有时间
+        # ===统计持仓时间，会比实际时间少一根K线的是距离
+        trade['持仓时间'] = trade['end_bar'] - trade.index
+        max_days, max_seconds = trade['持仓时间'].max().days, trade['持仓时间'].max().seconds
+        max_hours = max_seconds // 3600
+        max_minute = (max_seconds - max_hours * 3600) // 60
+        results.loc[0, '单笔最长持有时间'] = str(max_days) + ' 天 ' + str(max_hours) + ' 小时 ' + str(
+            max_minute) + ' 分钟'  # 单笔最长持有时间
 
-    min_days, min_seconds = trade['持仓时间'].min().days, trade['持仓时间'].min().seconds
-    min_hours = min_seconds // 3600
-    min_minute = (min_seconds - min_hours * 3600) // 60
-    results.loc[0, '单笔最短持有时间'] = str(min_days) + ' 天 ' + str(min_hours) + ' 小时 ' + str(
-        min_minute) + ' 分钟'  # 单笔最短持有时间
+        min_days, min_seconds = trade['持仓时间'].min().days, trade['持仓时间'].min().seconds
+        min_hours = min_seconds // 3600
+        min_minute = (min_seconds - min_hours * 3600) // 60
+        results.loc[0, '单笔最短持有时间'] = str(min_days) + ' 天 ' + str(min_hours) + ' 小时 ' + str(
+            min_minute) + ' 分钟'  # 单笔最短持有时间
 
-    mean_days, mean_seconds = trade['持仓时间'].mean().days, trade['持仓时间'].mean().seconds
-    mean_hours = mean_seconds // 3600
-    mean_minute = (mean_seconds - mean_hours * 3600) // 60
-    results.loc[0, '平均持仓周期'] = str(mean_days) + ' 天 ' + str(mean_hours) + ' 小时 ' + str(
-        mean_minute) + ' 分钟'  # 平均持仓周期
+        mean_days, mean_seconds = trade['持仓时间'].mean().days, trade['持仓时间'].mean().seconds
+        mean_hours = mean_seconds // 3600
+        mean_minute = (mean_seconds - mean_hours * 3600) // 60
+        results.loc[0, '平均持仓周期'] = str(mean_days) + ' 天 ' + str(mean_hours) + ' 小时 ' + str(
+            mean_minute) + ' 分钟'  # 平均持仓周期
 
-    # ===连续盈利亏算
-    results.loc[0, '最大连续盈利笔数'] = max(
-        [len(list(v)) for k, v in itertools.groupby(np.where(trade['change'] > 0, 1, np.nan))])  # 最大连续盈利笔数
-    results.loc[0, '最大连续亏损笔数'] = max(
-        [len(list(v)) for k, v in itertools.groupby(np.where(trade['change'] < 0, 1, np.nan))])  # 最大连续亏损笔数
+        # ===连续盈利亏算
+        results.loc[0, '最大连续盈利笔数'] = max(
+            [len(list(v)) for k, v in itertools.groupby(np.where(trade['change'] > 0, 1, np.nan))])  # 最大连续盈利笔数
+        results.loc[0, '最大连续亏损笔数'] = max(
+            [len(list(v)) for k, v in itertools.groupby(np.where(trade['change'] < 0, 1, np.nan))])  # 最大连续亏损笔数
 
     # ===每月收益率
     equity_curve.set_index('candle_begin_time', inplace=True)

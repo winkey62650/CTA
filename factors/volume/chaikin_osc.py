@@ -35,7 +35,7 @@ def signal(df, para=[20], proportion=1, leverage_rate=1):
 
     # 计算成交量加权
     df['clv'] = df['price_change'] * df['volume']
-    df['clv'] = df['clv'].where(df['clv'] > 0, 0, df['volume'])
+    df['clv'] = np.where(df['clv'] > 0, df['clv'], 0)
 
     # 计算EMA成交量
     df['ema_vol_up'] = df['clv'].ewm(span=period, adjust=False).mean()

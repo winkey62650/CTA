@@ -21,7 +21,7 @@ import numpy as np
 def signal(df, para=[20, 2.0, -2.0], proportion=1, leverage_rate=1):
     period = para[0]
     threshold = para[1]
-    oversold = para[2]
+    oversold = -threshold
 
     df['mean'] = df['close'].rolling(window=period, min_periods=1).mean()
     df['std'] = df['close'].rolling(window=period, min_periods=1).std()
